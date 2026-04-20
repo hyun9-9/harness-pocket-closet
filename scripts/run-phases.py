@@ -11,6 +11,7 @@ Example: python3 run-phases.py 0-mvp
 import itertools
 import json
 import os
+import shutil
 import subprocess
 import sys
 import threading
@@ -42,12 +43,12 @@ def now_iso() -> str:
 
 
 def load_index(index_file: Path) -> dict:
-    with open(index_file, "r") as f:
+    with open(index_file, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
 def save_index(index_file: Path, data: dict):
-    with open(index_file, "w") as f:
+    with open(index_file, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 
@@ -82,7 +83,7 @@ def load_phase_prompt(task_dir: Path, phase_num: int) -> str:
     if not phase_file.exists():
         print(f"ERROR: {phase_file} not found")
         sys.exit(1)
-    return phase_file.read_text()
+    return phase_file.read_text(encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------
@@ -254,21 +255,25 @@ def run_phase(task_dir: Path, phase: dict, preamble: str, gh_env: dict[str, str]
 
     output_file = task_dir / f"phase{phase_num}-output.json"
 
+    claude_bin = shutil.which("claude") or "claude"
     cmd = [
-        "claude",
+        claude_bin,
         "-p",
         "--dangerously-skip-permissions",
         "--output-format", "json",
-        full_prompt,
     ]
 
+    # Pipe prompt via stdin to avoid Windows command-line length/escaping limits.
     result = subprocess.run(
         cmd,
         cwd=str(ROOT),
+        input=full_prompt,
         capture_output=True,
         text=True,
         timeout=1800,  # 30 minutes per phase
         env={**os.environ, **gh_env} if gh_env else None,
+        encoding="utf-8",
+        errors="replace",
     )
 
     output_data = {
@@ -279,7 +284,7 @@ def run_phase(task_dir: Path, phase: dict, preamble: str, gh_env: dict[str, str]
         "stderr": result.stderr,
     }
 
-    with open(output_file, "w") as f:
+    with open(output_file, "w", encoding="utf-8") as f:
         json.dump(output_data, f, indent=2, ensure_ascii=False)
 
     if result.returncode != 0:
