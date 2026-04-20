@@ -13,6 +13,8 @@ desktop.ini
 .env
 .env.*
 !.env.example
+app/.env
+server/.env
 *.key
 *.pem
 
@@ -31,6 +33,9 @@ yarn-error.log*
 # Metro
 .metro-health-check*
 
+# Jest
+.jest-cache/
+
 # Native builds
 ios/Pods/
 ios/build/
@@ -44,10 +49,12 @@ android/local.properties
 
 # === Python / FastAPI ===
 __pycache__/
+*.pyc
 *.py[cod]
 *$py.class
 *.so
 .Python
+.python-version
 venv/
 .venv/
 env/

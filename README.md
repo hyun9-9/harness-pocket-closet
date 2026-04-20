@@ -35,6 +35,49 @@ scripts/      # 개발 워크플로우 자동화 (run-phases.py 등)
 prompts/      # 작업 생성 프롬프트
 ```
 
+## 환경변수 설정
+
+실행 전 각 워크스페이스의 `.env.example`을 복사해서 `.env`로 만든다.
+
+```bash
+cp app/.env.example app/.env
+cp server/.env.example server/.env
+# server/.env 의 GEMINI_API_KEY 를 채운다
+```
+
+- `app/.env` — `EXPO_PUBLIC_API_URL` (기본값 `http://localhost:8000`)
+- `server/.env` — `GEMINI_API_KEY` (Google AI Studio에서 발급)
+
+## 앱 실행
+
+```bash
+cd app
+npm install
+npx expo start
+```
+
+시뮬레이터/실기기/웹 중 원하는 타겟을 선택한다. 서버가 먼저 기동되어 있어야 네트워크 호출이 동작한다.
+
+## 서버 실행
+
+```bash
+cd server
+pip install -r requirements.txt
+uvicorn main:app --reload
+```
+
+기본 포트는 `8000`. 헬스체크: `curl http://localhost:8000/health` → `{"status":"ok"}`.
+
+## 테스트 실행
+
+```bash
+# 앱 (Jest)
+cd app && npm test
+
+# 서버 (pytest)
+cd server && pytest
+```
+
 ## 개발 워크플로우
 
 이 저장소는 Claude Code 기반 harness 파이프라인(Clarify → Context → Plan → Generate → Evaluate)으로 작업을 진행한다. 자세한 설계 문서는 `docs/` 참고.
