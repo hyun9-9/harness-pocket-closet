@@ -329,6 +329,12 @@ def update_top_index_status(task_dir_name: str, status: str):
 # ---------------------------------------------------------------------------
 
 def main():
+    # Windows 콘솔(cp949)에서 ✓/✗/⏸ 같은 유니코드 출력 시 UnicodeEncodeError 방지
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure:
+            reconfigure(encoding="utf-8", errors="replace")
+
     task_dir = get_task_dir()
     task_dir_name = task_dir.name
     index_file = task_dir / "index.json"
