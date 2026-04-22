@@ -71,7 +71,7 @@ export default function ClothingDetailScreen() {
       router.back();
     } catch (e: any) {
       setBusy(false);
-      toast.show(e?.message ?? '수정에 실패했습니다');
+      toast.showError(e?.message ?? '수정에 실패했습니다');
     }
   };
 
@@ -94,7 +94,7 @@ export default function ClothingDetailScreen() {
             router.back();
           } catch (e: any) {
             setBusy(false);
-            toast.show(e?.message ?? '삭제에 실패했습니다');
+            toast.showError(e?.message ?? '삭제에 실패했습니다');
           }
         },
       },

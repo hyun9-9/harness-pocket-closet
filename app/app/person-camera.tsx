@@ -45,7 +45,7 @@ export default function PersonCameraScreen() {
       router.back();
     } catch (e: any) {
       setBusy(false);
-      toast.show(e?.message ?? '촬영에 실패했습니다');
+      toast.showError(e?.message ?? '촬영에 실패했습니다');
     }
   };
 

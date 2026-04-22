@@ -46,7 +46,7 @@ export default function RecommendScreen() {
       const res = await recommend(occasion, clothes);
       setCombinations(res.combinations ?? []);
     } catch (e: any) {
-      toast.show(e?.message ?? '추천 요청 실패');
+      toast.showError(e?.message ?? '추천 요청 실패');
       setCombinations(null);
     } finally {
       setLoading(false);

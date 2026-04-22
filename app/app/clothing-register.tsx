@@ -75,7 +75,7 @@ export default function ClothingRegisterScreen() {
       router.replace('/(tabs)/closet');
     } catch (e: any) {
       setSaving(false);
-      toast.show(e?.message ?? '저장에 실패했습니다');
+      toast.showError(e?.message ?? '저장에 실패했습니다');
     }
   };
 

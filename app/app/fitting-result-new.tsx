@@ -66,7 +66,7 @@ export default function FittingResultNewScreen() {
         setLoading(false);
       } catch (e: any) {
         setLoading(false);
-        toast.show(e?.message ?? '피팅에 실패했습니다');
+        toast.showError(e?.message ?? '피팅에 실패했습니다');
         router.back();
       }
     })();
@@ -94,7 +94,7 @@ export default function FittingResultNewScreen() {
       router.replace('/(tabs)/fitting');
     } catch (e: any) {
       setSaving(false);
-      toast.show(e?.message ?? '저장에 실패했습니다');
+      toast.showError(e?.message ?? '저장에 실패했습니다');
     }
   };
 
