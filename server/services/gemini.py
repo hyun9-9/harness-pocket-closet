@@ -12,9 +12,9 @@ from config import GEMINI_API_KEY
 
 _TIMEOUT_DEFAULT = 20
 _TIMEOUT_IMAGE = 30
-_FLASH_TEXT_MODEL = "gemini-2.0-flash"
-_FLASH_MULTIMODAL_MODEL = "gemini-2.0-flash"
-_PRO_IMAGE_MODEL = "gemini-2.0-flash-exp-image-generation"
+_FLASH_TEXT_MODEL = "gemini-flash-latest"
+_FLASH_MULTIMODAL_MODEL = "gemini-flash-latest"
+_PRO_IMAGE_MODEL = "gemini-2.5-flash-image"
 
 
 def _configure() -> None:
