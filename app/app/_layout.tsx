@@ -1,3 +1,5 @@
+import 'react-native-get-random-values';
+
 import { Stack } from 'expo-router';
 
 import { ToastProvider } from '../components/ToastContext';
