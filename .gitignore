@@ -69,6 +69,7 @@ pip-log.txt
 # === Claude Code / Harness ===
 .claude/settings.local.json
 .claude/cache/
+.claude/worktrees/
 tasks/
 temp
 temp/
