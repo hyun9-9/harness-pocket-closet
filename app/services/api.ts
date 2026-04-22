@@ -28,10 +28,19 @@ async function fetchWithTimeout(
   timeoutMs: number
 ): Promise<Response> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
   try {
     const res = await fetch(url, { ...init, signal: controller.signal });
     return res;
+  } catch (e: any) {
+    if (timedOut || e?.name === 'AbortError') {
+      throw new Error('요청이 시간 초과되었습니다');
+    }
+    throw e;
   } finally {
     clearTimeout(timer);
   }
