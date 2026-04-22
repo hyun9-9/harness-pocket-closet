@@ -9,18 +9,28 @@ import {
   View,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
+import { v4 as uuidv4 } from 'uuid';
 
 import { Button } from '../../components/Button';
 import { CategoryFilter, CategoryFilterValue } from '../../components/CategoryFilter';
 import { ClothingCard } from '../../components/ClothingCard';
-import { LoadingOverlay } from '../../components/LoadingOverlay';
 import { useToast } from '../../components/ToastContext';
+import { CATEGORIES } from '../../constants/categories';
 import { theme } from '../../constants/theme';
-import { analyzeClothes, type AnalyzeItem } from '../../services/api';
+import { analyzeClothes } from '../../services/api';
 import { pickImagesFromGallery, takePhoto } from '../../services/imagePicker';
 import { resizeAndSaveClothingImage } from '../../services/imageUtils';
-import { getClothes } from '../../services/storage';
-import type { Clothing } from '../../types';
+import { addClothes, getClothes, updateClothing } from '../../services/storage';
+import type { Category, Clothing } from '../../types';
+
+const inFlightIds = new Set<string>();
+
+function normalizeCategory(raw: string | undefined): Category {
+  if (raw && (CATEGORIES as readonly string[]).includes(raw)) {
+    return raw as Category;
+  }
+  return '상의';
+}
 
 const GRID_COLS = 3;
 const GRID_GAP = 8;
@@ -33,26 +43,64 @@ export default function ClosetScreen() {
   const [clothes, setClothes] = useState<Clothing[]>([]);
   const [filter, setFilter] = useState<CategoryFilterValue>('all');
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+
+  const refresh = useCallback(async () => {
+    const items = await getClothes();
+    const sorted = [...items].sort((a, b) => b.createdAt - a.createdAt);
+    setClothes(sorted);
+    for (const c of items) {
+      if (c.status === 'analyzing' && !inFlightIds.has(c.id)) {
+        await updateClothing(c.id, { status: 'failed' });
+      }
+    }
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
       let active = true;
       (async () => {
-        const items = await getClothes();
+        await refresh();
         if (!active) return;
-        const sorted = [...items].sort((a, b) => b.createdAt - a.createdAt);
-        setClothes(sorted);
       })();
       return () => {
         active = false;
       };
-    }, [])
+    }, [refresh])
   );
 
   const filtered = clothes.filter((c) =>
     filter === 'all' || filter === null ? true : c.category === filter
   );
+
+  const runAnalyze = async (placeholders: Clothing[]) => {
+    const uris = placeholders.map((p) => p.imageUri);
+    try {
+      const metas = await analyzeClothes(uris);
+      await Promise.all(
+        placeholders.map((p, idx) => {
+          const meta = metas[idx];
+          if (!meta) {
+            return updateClothing(p.id, { status: 'failed' });
+          }
+          return updateClothing(p.id, {
+            category: normalizeCategory(meta.category),
+            colors: Array.isArray(meta.colors) ? meta.colors : [],
+            material: typeof meta.material === 'string' ? meta.material : '',
+            tags: Array.isArray(meta.tags) ? meta.tags : [],
+            status: 'ready',
+          });
+        }),
+      );
+    } catch (e: any) {
+      await Promise.all(
+        placeholders.map((p) => updateClothing(p.id, { status: 'failed' })),
+      );
+      toast.showError(e?.message ?? '분석 중 오류가 발생했습니다');
+    } finally {
+      for (const p of placeholders) inFlightIds.delete(p.id);
+      await refresh();
+    }
+  };
 
   const handleSelect = async (source: 'camera' | 'gallery') => {
     setSheetOpen(false);
@@ -67,22 +115,24 @@ export default function ClosetScreen() {
         if (uris.length === 0) return;
       }
 
-      setLoading(true);
       const resized = await Promise.all(uris.map(resizeAndSaveClothingImage));
-      const metas: AnalyzeItem[] = await analyzeClothes(resized);
-
-      const items = resized.map((imageUri, idx) => ({
+      const now = Date.now();
+      const placeholders: Clothing[] = resized.map((imageUri, idx) => ({
+        id: uuidv4(),
         imageUri,
-        meta: metas[idx] ?? { category: '상의', colors: [], material: '', tags: [] },
+        category: '상의',
+        colors: [],
+        material: '',
+        tags: [],
+        createdAt: now + idx,
+        status: 'analyzing',
       }));
-      setLoading(false);
-      router.push({
-        pathname: '/clothing-register',
-        params: { items: JSON.stringify(items) },
-      });
+      for (const p of placeholders) inFlightIds.add(p.id);
+      await addClothes(placeholders);
+      await refresh();
+      void runAnalyze(placeholders);
     } catch (e: any) {
-      setLoading(false);
-      toast.show(e?.message ?? '처리 중 오류가 발생했습니다');
+      toast.showError(e?.message ?? '처리 중 오류가 발생했습니다');
     }
   };
 
@@ -172,7 +222,6 @@ export default function ClosetScreen() {
         </Pressable>
       </Modal>
 
-      <LoadingOverlay visible={loading} message="분석 중..." />
     </View>
   );
 }

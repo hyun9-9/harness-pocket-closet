@@ -4,6 +4,8 @@ import type { OCCASIONS } from '../constants/occasions';
 export type Category = (typeof CATEGORIES)[number];
 export type Occasion = (typeof OCCASIONS)[number];
 
+export type ClothingStatus = 'analyzing' | 'ready' | 'failed';
+
 export interface Clothing {
   id: string;
   imageUri: string;
@@ -12,6 +14,7 @@ export interface Clothing {
   material: string;
   tags: string[];
   createdAt: number;
+  status?: ClothingStatus;
 }
 
 export interface FittingResult {

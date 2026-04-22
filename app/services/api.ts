@@ -1,8 +1,8 @@
 import type { Clothing } from '../types';
 
-const ANALYZE_TIMEOUT_MS = 15_000;
-const RECOMMEND_TIMEOUT_MS = 15_000;
-const TRYON_TIMEOUT_MS = 30_000;
+const ANALYZE_TIMEOUT_MS = 60_000;
+const RECOMMEND_TIMEOUT_MS = 30_000;
+const TRYON_TIMEOUT_MS = 60_000;
 
 function apiBase(): string {
   const base = process.env.EXPO_PUBLIC_API_URL;

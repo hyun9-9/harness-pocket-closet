@@ -1,5 +1,13 @@
 import { useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  ViewStyle,
+} from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import { theme } from '../constants/theme';
@@ -22,6 +30,8 @@ export function ClothingCard({
 }: ClothingCardProps) {
   const [failed, setFailed] = useState(false);
   const showPlaceholder = !clothing.imageUri || failed;
+  const isAnalyzing = clothing.status === 'analyzing';
+  const isAnalyzeFailed = clothing.status === 'failed';
 
   return (
     <Pressable
@@ -46,6 +56,17 @@ export function ClothingCard({
           style={styles.image}
           onError={() => setFailed(true)}
         />
+      )}
+      {isAnalyzing && (
+        <View style={styles.statusOverlay}>
+          <ActivityIndicator color="#FFFFFF" size="small" />
+          <Text style={styles.statusText}>등록중…</Text>
+        </View>
+      )}
+      {isAnalyzeFailed && (
+        <View style={styles.statusOverlay}>
+          <Text style={styles.statusText}>분석 실패</Text>
+        </View>
       )}
       {selected && (
         <View style={styles.checkBadge}>
@@ -101,5 +122,21 @@ const styles = StyleSheet.create({
     backgroundColor: theme.point,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  statusOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    top: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    gap: 6,
+  },
+  statusText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
   },
 });
