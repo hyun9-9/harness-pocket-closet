@@ -15,6 +15,7 @@ async def try_on(
     person: UploadFile = File(...),
     clothes: List[UploadFile] = File(...),
     meta: str = Form(""),
+    styling_prompt: str = Form(""),
 ):
     if not clothes:
         raise HTTPException(status_code=400, detail="옷 이미지가 1장 이상 필요합니다")
@@ -31,6 +32,12 @@ async def try_on(
         clothing_bytes.append(data)
 
     prompt = TRYON_PROMPT + (meta or "")
+    styling_prompt = (styling_prompt or "")[:400]
+    if styling_prompt:
+        prompt += (
+            "\n\nStyling guide (apply naturally without changing pose, face, or background):\n"
+            + styling_prompt
+        )
 
     try:
         image_bytes = call_pro_image_edit(prompt, [person_bytes, *clothing_bytes])
