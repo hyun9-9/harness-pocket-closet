@@ -33,6 +33,7 @@ class RecommendRequest(BaseModel):
 class RecommendCombination(BaseModel):
     clothing_ids: list[str]
     comment: str
+    styling_prompt: str = ""
 
 
 class RecommendResponse(BaseModel):

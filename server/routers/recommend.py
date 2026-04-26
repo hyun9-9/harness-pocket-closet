@@ -47,7 +47,17 @@ def recommend(body: RecommendRequest) -> RecommendResponse:
         raise HTTPException(status_code=400, detail="combinations 가 배열이 아닙니다")
     combinations = combinations[:3]
 
+    sanitized: list[dict] = []
+    for combo in combinations:
+        if not isinstance(combo, dict):
+            continue
+        sp = combo.get("styling_prompt", "")
+        if not isinstance(sp, str):
+            sp = ""
+        combo["styling_prompt"] = sp[:400]
+        sanitized.append(combo)
+
     try:
-        return RecommendResponse.model_validate({"combinations": combinations})
+        return RecommendResponse.model_validate({"combinations": sanitized})
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"응답 스키마 불일치: {exc}")
