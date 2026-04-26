@@ -73,12 +73,31 @@ describe('tryOn', () => {
     expect(init.body).toBeInstanceOf(FormData);
     expect(result).toEqual(respBody);
   });
+
+  it('styling_prompt 미지정 시 빈 문자열을 form 으로 전송', async () => {
+    mockFetch.mockResolvedValue(jsonResponse({ image_base64: 'X', mime: 'image/jpeg' }));
+    await tryOn('file:///p.jpg', ['file:///c.jpg'], 'hint');
+    const [, init] = mockFetch.mock.calls[0];
+    const form = init.body as FormData;
+    expect(form.get('styling_prompt')).toBe('');
+  });
+
+  it('styling_prompt 4번째 인자 전달 시 form 에 그대로 포함', async () => {
+    mockFetch.mockResolvedValue(jsonResponse({ image_base64: 'X', mime: 'image/jpeg' }));
+    const sp = 'Tuck shirt; roll sleeves.';
+    await tryOn('file:///p.jpg', ['file:///c.jpg'], 'hint', sp);
+    const [, init] = mockFetch.mock.calls[0];
+    const form = init.body as FormData;
+    expect(form.get('styling_prompt')).toBe(sp);
+  });
 });
 
 describe('recommend', () => {
   it('POST /recommend 에 JSON body 로 호출하고 { combinations } 반환', async () => {
     const respBody = {
-      combinations: [{ clothing_ids: ['c1'], comment: '좋습니다' }],
+      combinations: [
+        { clothing_ids: ['c1'], comment: '좋습니다', styling_prompt: 'Tuck in.' },
+      ],
     };
     mockFetch.mockResolvedValue(jsonResponse(respBody));
 
@@ -94,5 +113,6 @@ describe('recommend', () => {
     expect(init.headers['Content-Type']).toBe('application/json');
     expect(JSON.parse(init.body)).toEqual({ occasion: '출근', clothes });
     expect(result).toEqual(respBody);
+    expect(result.combinations[0].styling_prompt).toBe('Tuck in.');
   });
 });

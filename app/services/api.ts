@@ -87,7 +87,8 @@ export interface TryOnResponse {
 export async function tryOn(
   personUri: string,
   clothingUris: string[],
-  meta = ''
+  meta = '',
+  stylingPrompt = ''
 ): Promise<TryOnResponse> {
   const form = new FormData();
   form.append('person', fileFromUri(personUri, 'person.jpg'));
@@ -95,6 +96,7 @@ export async function tryOn(
     form.append('clothes', fileFromUri(uri, `clothing_${idx}.jpg`));
   });
   form.append('meta', meta);
+  form.append('styling_prompt', stylingPrompt);
 
   const res = await fetchWithTimeout(
     `${apiBase()}/try-on`,
@@ -107,6 +109,7 @@ export async function tryOn(
 export interface RecommendCombination {
   clothing_ids: string[];
   comment: string;
+  styling_prompt: string;
 }
 
 export interface RecommendResponse {
