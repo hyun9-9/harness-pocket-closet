@@ -10,13 +10,15 @@ const THUMB_SIZE = 88;
 export interface CombinationCardProps {
   clothingIds: string[];
   comment: string;
+  stylingPrompt: string;
   allClothes: Clothing[];
-  onTryOn: (ids: string[]) => void;
+  onTryOn: (ids: string[], stylingPrompt: string) => void;
 }
 
 export function CombinationCard({
   clothingIds,
   comment,
+  stylingPrompt,
   allClothes,
   onTryOn,
 }: CombinationCardProps) {
@@ -49,7 +51,7 @@ export function CombinationCard({
       </Text>
       <Button
         label="입어보기"
-        onPress={() => onTryOn(clothingIds)}
+        onPress={() => onTryOn(clothingIds, stylingPrompt)}
         fullWidth
       />
     </View>

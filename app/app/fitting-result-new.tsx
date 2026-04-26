@@ -36,7 +36,7 @@ function buildMeta(items: Clothing[]): string {
 export default function FittingResultNewScreen() {
   const router = useRouter();
   const toast = useToast();
-  const params = useLocalSearchParams<{ ids?: string }>();
+  const params = useLocalSearchParams<{ ids?: string; sp?: string }>();
 
   const [loading, setLoading] = useState(true);
   const [resultUri, setResultUri] = useState<string | null>(null);
@@ -49,6 +49,7 @@ export default function FittingResultNewScreen() {
     ranRef.current = true;
 
     const ids = parseIds(params.ids);
+    const stylingPrompt = typeof params.sp === 'string' ? params.sp : '';
     (async () => {
       try {
         const [profile, allClothes] = await Promise.all([getUserProfile(), getClothes()]);
@@ -58,7 +59,12 @@ export default function FittingResultNewScreen() {
         if (picked.length === 0) throw new Error('선택된 옷이 없습니다');
 
         const clothingUris = picked.map((c) => c.imageUri);
-        const res = await tryOn(profile.personImageUri, clothingUris, buildMeta(picked));
+        const res = await tryOn(
+          profile.personImageUri,
+          clothingUris,
+          buildMeta(picked),
+          stylingPrompt
+        );
         const localUri = await saveFittingResultFromBase64(res.image_base64);
 
         setUsedClothes(picked);
@@ -70,7 +76,7 @@ export default function FittingResultNewScreen() {
         router.back();
       }
     })();
-  }, [params.ids, router, toast]);
+  }, [params.ids, params.sp, router, toast]);
 
   const handleRetry = async () => {
     if (resultUri) {

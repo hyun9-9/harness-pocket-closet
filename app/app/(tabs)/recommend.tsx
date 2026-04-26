@@ -53,11 +53,11 @@ export default function RecommendScreen() {
     }
   };
 
-  const handleTryOn = (ids: string[]) => {
+  const handleTryOn = (ids: string[], stylingPrompt: string) => {
     if (ids.length === 0) return;
     router.push({
-      pathname: '/(tabs)/fitting',
-      params: { ids: ids.join(',') },
+      pathname: '/fitting-result-new',
+      params: { ids: ids.join(','), sp: stylingPrompt },
     });
   };
 
@@ -143,6 +143,7 @@ export default function RecommendScreen() {
                 key={`${selected}-${idx}`}
                 clothingIds={combo.clothing_ids}
                 comment={combo.comment}
+                stylingPrompt={combo.styling_prompt ?? ''}
                 allClothes={clothes}
                 onTryOn={handleTryOn}
               />
