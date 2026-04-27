@@ -282,10 +282,17 @@ export async function applyRemoteProfile(remote: UserProfile): Promise<void> {
   const localTs = local.updated_at ?? '';
   const remoteTs = remote.updated_at ?? '';
   if (!localTs || remoteTs > localTs) {
+    // 로컬에 file:// 캐시가 있으면 보존 — clothes/fittings 와 같은 이유.
+    // person camera 화면이 그 file:// 를 그대로 Image 에 넘기므로 remote path
+    // 로 덮어쓰면 표시되지 않는다.
+    const personImageUri = isLocalUri(local.personImageUri)
+      ? local.personImageUri
+      : remote.personImageUri;
     await AsyncStorage.setItem(
       PROFILE_KEY,
       JSON.stringify({
         ...remote,
+        personImageUri,
         remote_synced_at: remoteTs || nowIso(),
       })
     );
