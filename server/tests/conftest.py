@@ -106,4 +106,5 @@ def mock_supabase(monkeypatch):
     monkeypatch.setattr("services.supabase_client.get_supabase", lambda: mock_client)
     monkeypatch.setattr("routers.uploads.get_supabase", lambda: mock_client)
     monkeypatch.setattr("routers.users.get_supabase", lambda: mock_client)
+    monkeypatch.setattr("routers.clothes.get_supabase", lambda: mock_client)
     return mock_client
