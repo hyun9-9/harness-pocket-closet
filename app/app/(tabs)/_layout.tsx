@@ -1,4 +1,5 @@
 import { Tabs } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Path, Polygon, Rect } from 'react-native-svg';
 
 import { theme } from '../../constants/theme';
@@ -47,35 +48,37 @@ function RecommendIcon({ color, size }: IconProps) {
 
 export default function TabLayout() {
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: theme.point,
-        tabBarInactiveTintColor: theme.muted,
-        tabBarStyle: { backgroundColor: theme.bg, borderTopColor: theme.border },
-      }}
-    >
-      <Tabs.Screen
-        name="closet"
-        options={{
-          title: '옷장',
-          tabBarIcon: ({ color, size }) => <ClosetIcon color={color} size={size} />,
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg }} edges={['top']}>
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarActiveTintColor: theme.point,
+          tabBarInactiveTintColor: theme.muted,
+          tabBarStyle: { backgroundColor: theme.bg, borderTopColor: theme.border },
         }}
-      />
-      <Tabs.Screen
-        name="fitting"
-        options={{
-          title: '피팅',
-          tabBarIcon: ({ color, size }) => <FittingIcon color={color} size={size} />,
-        }}
-      />
-      <Tabs.Screen
-        name="recommend"
-        options={{
-          title: '추천',
-          tabBarIcon: ({ color, size }) => <RecommendIcon color={color} size={size} />,
-        }}
-      />
-    </Tabs>
+      >
+        <Tabs.Screen
+          name="closet"
+          options={{
+            title: '옷장',
+            tabBarIcon: ({ color, size }) => <ClosetIcon color={color} size={size} />,
+          }}
+        />
+        <Tabs.Screen
+          name="fitting"
+          options={{
+            title: '피팅',
+            tabBarIcon: ({ color, size }) => <FittingIcon color={color} size={size} />,
+          }}
+        />
+        <Tabs.Screen
+          name="recommend"
+          options={{
+            title: '추천',
+            tabBarIcon: ({ color, size }) => <RecommendIcon color={color} size={size} />,
+          }}
+        />
+      </Tabs>
+    </SafeAreaView>
   );
 }
