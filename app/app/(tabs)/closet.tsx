@@ -94,8 +94,6 @@ export default function ClosetScreen() {
       (async () => {
         await refresh();
         if (!active || !user) return;
-        // 포커스 진입마다 1회 sync — push 누락 만회 + remote 변경 pull.
-        // 실패해도 UI 는 진행. 끝나면 한번 더 refresh 로 pull 결과 반영.
         try {
           await syncClothes();
           if (!active) return;
