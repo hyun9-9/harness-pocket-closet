@@ -9,6 +9,7 @@ import { useToast } from '../components/ToastContext';
 import { CATEGORIES } from '../constants/categories';
 import { theme } from '../constants/theme';
 import { addClothes } from '../services/storage';
+import { pushPendingClothes } from '../services/sync/clothesSync';
 import type { Category, Clothing } from '../types';
 
 interface IncomingItem {
@@ -72,6 +73,10 @@ export default function ClothingRegisterScreen() {
         createdAt: now + idx,
       }));
       await addClothes(items);
+      // fire-and-forget — 다음 옷장 진입까지 기다리지 않고 바로 push 시도.
+      pushPendingClothes().catch(() => {
+        /* 실패해도 closet focus 시 재시도됨 */
+      });
       router.replace('/(tabs)/closet');
     } catch (e: any) {
       setSaving(false);

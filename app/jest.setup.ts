@@ -25,6 +25,18 @@ jest.mock('expo-secure-store', () => {
   };
 });
 
+jest.mock('@react-native-community/netinfo', () => ({
+  __esModule: true,
+  default: {
+    addEventListener: jest.fn(() => () => {
+      /* unsubscribe noop */
+    }),
+    fetch: jest.fn(() =>
+      Promise.resolve({ isConnected: true, isInternetReachable: true })
+    ),
+  },
+}));
+
 // @supabase/supabase-js: createClient 가 사용 가능한 더미 client 를 반환하도록.
 jest.mock('@supabase/supabase-js', () => ({
   createClient: () => ({

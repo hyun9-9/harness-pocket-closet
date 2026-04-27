@@ -8,6 +8,13 @@ import { useToast } from '../../components/ToastContext';
 import { theme } from '../../constants/theme';
 import { deleteImage } from '../../services/imageUtils';
 import { deleteClothing, getClothes, updateClothing } from '../../services/storage';
+import { pushPendingClothes } from '../../services/sync/clothesSync';
+
+function triggerPush(): void {
+  pushPendingClothes().catch(() => {
+    /* 실패해도 closet focus 시 재시도됨 */
+  });
+}
 import type { Clothing } from '../../types';
 
 function diffEqual(a: Partial<Clothing>, b: Partial<Clothing>): boolean {
@@ -67,6 +74,7 @@ export default function ClothingDetailScreen() {
         material: form.material ?? '',
         tags: form.tags ?? [],
       });
+      triggerPush();
       toast.show('수정되었습니다');
       router.back();
     } catch (e: any) {
@@ -91,6 +99,7 @@ export default function ClothingDetailScreen() {
                 await deleteImage(original.imageUri);
               } catch {}
             }
+            triggerPush();
             router.back();
           } catch (e: any) {
             setBusy(false);

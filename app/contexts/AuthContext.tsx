@@ -1,3 +1,4 @@
+import NetInfo from '@react-native-community/netinfo';
 import type { Session, User } from '@supabase/supabase-js';
 import { makeRedirectUri } from 'expo-auth-session';
 import * as Linking from 'expo-linking';
@@ -19,6 +20,9 @@ WebBrowser.maybeCompleteAuthSession();
 import { bootstrapUser } from '../services/api';
 import { clearAllLocal } from '../services/storage';
 import { supabase } from '../services/supabase';
+import { syncClothes } from '../services/sync/clothesSync';
+import { syncFittings } from '../services/sync/fittingsSync';
+import { syncProfile } from '../services/sync/profileSync';
 
 interface AuthContextValue {
   user: User | null;
@@ -75,6 +79,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // eslint-disable-next-line no-console
       console.warn('bootstrap failed', e);
     });
+  }, [user?.id]);
+
+  // 온라인 복귀 시 자동 재시도 — 옷장 화면 외에서도 트리거된다.
+  // 비행기 모드 / 약한 인터넷에서 등록한 변경분이 인터넷 복귀 즉시 push 되도록.
+  useEffect(() => {
+    if (!user?.id) return;
+    let prevConnected: boolean | null = null;
+    const unsub = NetInfo.addEventListener((state) => {
+      const isOnline = state.isConnected === true && state.isInternetReachable !== false;
+      // false (또는 첫 측정) → true 전환 시점에만 한번 트리거.
+      if (prevConnected === false && isOnline) {
+        Promise.allSettled([syncClothes(), syncFittings(), syncProfile()]).catch(
+          () => {
+            /* noop */
+          }
+        );
+      }
+      prevConnected = isOnline;
+    });
+    return () => {
+      unsub();
+    };
   }, [user?.id]);
 
   const signInWithGoogle = async () => {
