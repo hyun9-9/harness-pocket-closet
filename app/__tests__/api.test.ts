@@ -53,7 +53,7 @@ describe('analyzeClothes', () => {
 
     jest.useFakeTimers();
     const p = analyzeClothes(['file:///a.jpg']);
-    jest.advanceTimersByTime(16_000);
+    jest.advanceTimersByTime(61_000);
     await expect(p).rejects.toThrow();
     jest.useRealTimers();
   });

@@ -136,6 +136,21 @@ export default function ClosetScreen() {
     }
   };
 
+  const handleDetectMulti = async () => {
+    setSheetOpen(false);
+    try {
+      const uris = await pickImagesFromGallery(1);
+      if (uris.length === 0) return;
+      const resized = await resizeAndSaveClothingImage(uris[0]);
+      router.push({
+        pathname: '/clothing-detect-review',
+        params: { uri: resized },
+      });
+    } catch (e: any) {
+      toast.showError(e?.message ?? '처리 중 오류가 발생했습니다');
+    }
+  };
+
   const isEmpty = clothes.length === 0;
 
   return (
@@ -207,6 +222,13 @@ export default function ClosetScreen() {
             <Button
               label="갤러리에서 선택 (최대 5장)"
               onPress={() => handleSelect('gallery')}
+              variant="secondary"
+              fullWidth
+              style={styles.sheetBtn}
+            />
+            <Button
+              label="한 장에서 여러 벌 인식"
+              onPress={() => handleDetectMulti()}
               variant="secondary"
               fullWidth
               style={styles.sheetBtn}

@@ -1,6 +1,7 @@
 import type { Clothing } from '../types';
 
 const ANALYZE_TIMEOUT_MS = 60_000;
+const DETECT_MULTI_TIMEOUT_MS = 60_000;
 const RECOMMEND_TIMEOUT_MS = 30_000;
 const TRYON_TIMEOUT_MS = 60_000;
 
@@ -63,6 +64,27 @@ export interface AnalyzeItem {
   colors: string[];
   material: string;
   tags: string[];
+}
+
+export interface DetectMultiItem {
+  category: string;
+  colors: string[];
+  material: string;
+  tags: string[];
+  confidence: number;
+  box_2d: [number, number, number, number];
+}
+
+export async function detectMultipleClothes(uri: string): Promise<DetectMultiItem[]> {
+  const form = new FormData();
+  form.append('file', fileFromUri(uri, 'detect.jpg'));
+
+  const res = await fetchWithTimeout(
+    `${apiBase()}/detect-multi`,
+    { method: 'POST', body: form as any },
+    DETECT_MULTI_TIMEOUT_MS
+  );
+  return ensureOk(res, 'detect-multi');
 }
 
 export async function analyzeClothes(uris: string[]): Promise<AnalyzeItem[]> {
