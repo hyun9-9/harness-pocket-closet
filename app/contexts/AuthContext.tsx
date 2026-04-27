@@ -1,4 +1,5 @@
 import type { Session, User } from '@supabase/supabase-js';
+import { makeRedirectUri } from 'expo-auth-session';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import {
@@ -9,6 +10,11 @@ import {
   useRef,
   useState,
 } from 'react';
+
+// OAuth 진행 후 in-app browser 가 자동으로 닫히고 앱으로 돌아오도록.
+// 모듈 import 시 1회 호출되어야 한다 — 누락 시 redirect 됐어도 브라우저가
+// 멈춘 것처럼 보임.
+WebBrowser.maybeCompleteAuthSession();
 
 import { bootstrapUser } from '../services/api';
 import { clearAllLocal } from '../services/storage';
@@ -72,29 +78,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user?.id]);
 
   const signInWithGoogle = async () => {
-    const redirectUrl = Linking.createURL('auth/callback');
+    const redirectUrl = makeRedirectUri({
+      scheme: 'pocketcloset',
+      path: 'auth/callback',
+      preferLocalhost: true,
+    });
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: redirectUrl, skipBrowserRedirect: true },
+      options: {
+        redirectTo: redirectUrl,
+        skipBrowserRedirect: true,
+        queryParams: { prompt: 'select_account' },
+      },
     });
     if (error) throw error;
     if (!data?.url) throw new Error('OAuth URL 을 받지 못했습니다');
 
-    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
-    if (result.type !== 'success' || !result.url) {
-      throw new Error('로그인이 취소되었습니다');
+    // 일부 안드로이드 환경에서 Custom Tabs 가 exp:// deep link 도착 시 자동
+    // close 되지 않는다. WebBrowser 의 결과와 Linking 'url' 이벤트 둘 다
+    // 기다려서 먼저 도착하는 쪽으로 진행한다.
+    let resolveDeepLink: (url: string) => void = () => {};
+    const deepLinkPromise = new Promise<string>((resolve) => {
+      resolveDeepLink = resolve;
+    });
+    const linkingSub = Linking.addEventListener('url', (event) => {
+      if (event?.url) resolveDeepLink(event.url);
+    });
+    const wbPromise = WebBrowser.openAuthSessionAsync(data.url, redirectUrl).then(
+      (r) => {
+        if (r.type === 'success' && r.url) return r.url;
+        throw new Error('로그인이 취소되었습니다');
+      }
+    );
+
+    let resultUrl: string;
+    try {
+      resultUrl = await Promise.race([wbPromise, deepLinkPromise]);
+    } finally {
+      linkingSub.remove();
+      try {
+        await WebBrowser.dismissAuthSession();
+      } catch {
+        // noop — 이미 닫혔거나 지원 안 하는 플랫폼
+      }
     }
 
-    const fragment = result.url.split('#')[1] ?? result.url.split('?')[1] ?? '';
-    const params = new URLSearchParams(fragment);
-    const access_token = params.get('access_token');
-    const refresh_token = params.get('refresh_token');
-    if (!access_token || !refresh_token) {
-      throw new Error('redirect URL 에서 토큰을 찾지 못했습니다');
+    // PKCE flow: redirect URL 에 ?code=<authorization_code> 가 옴.
+    const queryStr = resultUrl.split('?')[1]?.split('#')[0] ?? '';
+    const params = new URLSearchParams(queryStr);
+    const code = params.get('code');
+    if (!code) {
+      throw new Error('redirect URL 에서 code 를 찾지 못했습니다');
     }
 
-    const { error: setErr } = await supabase.auth.setSession({ access_token, refresh_token });
-    if (setErr) throw setErr;
+    const { error: exchErr } = await supabase.auth.exchangeCodeForSession(code);
+    if (exchErr) throw exchErr;
   };
 
   const signInWithMockDev = async () => {

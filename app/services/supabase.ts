@@ -16,10 +16,52 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   );
 }
 
+// SecureStore 는 2KB 초과 값을 저장하지 못한다. Supabase session 토큰은
+// 그보다 클 수 있으므로 chunk 로 쪼개 저장하는 어댑터 — 공식 RN 가이드 패턴.
+const SECURE_CHUNK_SIZE = 2000;
+
+async function secureGetChunked(key: string): Promise<string | null> {
+  const sizeStr = await SecureStore.getItemAsync(`${key}_size`);
+  if (!sizeStr) return null;
+  const numChunks = parseInt(sizeStr, 10);
+  if (!Number.isFinite(numChunks) || numChunks <= 0) return null;
+  let result = '';
+  for (let i = 0; i < numChunks; i++) {
+    const part = await SecureStore.getItemAsync(`${key}_${i}`);
+    if (part === null) return null;
+    result += part;
+  }
+  return result;
+}
+
+async function secureSetChunked(key: string, value: string): Promise<void> {
+  // 기존 chunk 정리 (값 길이가 줄어든 경우 잔여 chunk 제거)
+  await secureRemoveChunked(key);
+  const numChunks = Math.ceil(value.length / SECURE_CHUNK_SIZE);
+  await SecureStore.setItemAsync(`${key}_size`, String(numChunks));
+  for (let i = 0; i < numChunks; i++) {
+    const chunk = value.slice(i * SECURE_CHUNK_SIZE, (i + 1) * SECURE_CHUNK_SIZE);
+    await SecureStore.setItemAsync(`${key}_${i}`, chunk);
+  }
+}
+
+async function secureRemoveChunked(key: string): Promise<void> {
+  const sizeStr = await SecureStore.getItemAsync(`${key}_size`);
+  if (sizeStr) {
+    const numChunks = parseInt(sizeStr, 10);
+    if (Number.isFinite(numChunks) && numChunks > 0) {
+      for (let i = 0; i < numChunks; i++) {
+        await SecureStore.deleteItemAsync(`${key}_${i}`);
+      }
+    }
+  }
+  await SecureStore.deleteItemAsync(`${key}_size`);
+}
+
 const secureStorageAdapter = {
-  getItem: (key: string) => SecureStore.getItemAsync(key),
-  setItem: (key: string, value: string) => SecureStore.setItemAsync(key, value),
-  removeItem: (key: string) => SecureStore.deleteItemAsync(key),
+  getItem: (key: string) => secureGetChunked(key),
+  setItem: (key: string, value: string) => secureSetChunked(key, value),
+  removeItem: (key: string) => secureRemoveChunked(key),
 };
 
 const webStorageAdapter = {
@@ -42,6 +84,6 @@ export const supabase: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON
     persistSession: true,
     // RN 에선 deep link 로 들어온 토큰을 AuthContext 가 직접 setSession 으로 처리.
     detectSessionInUrl: Platform.OS === 'web',
-    flowType: 'implicit',
+    flowType: 'pkce',
   },
 });

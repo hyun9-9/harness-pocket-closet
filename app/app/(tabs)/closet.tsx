@@ -177,18 +177,22 @@ export default function ClosetScreen() {
 
   return (
     <View style={styles.container}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="계정"
-        onPress={handleAccountPress}
-        style={({ pressed }) => [styles.accountBtn, pressed && styles.pressed]}
-      >
-        <Text style={styles.accountIcon}>👤</Text>
-      </Pressable>
+      <View style={styles.headerRow}>
+        <View style={styles.headerFilter}>
+          {!isEmpty && (
+            <CategoryFilter value={filter} onChange={setFilter} includeAll />
+          )}
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="계정"
+          onPress={handleAccountPress}
+          style={({ pressed }) => [styles.accountBtn, pressed && styles.pressed]}
+        >
+          <Text style={styles.accountIcon}>👤</Text>
+        </Pressable>
+      </View>
 
-      {!isEmpty && (
-        <CategoryFilter value={filter} onChange={setFilter} includeAll />
-      )}
 
       {isEmpty ? (
         <View style={styles.emptyWrap}>
@@ -326,17 +330,20 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   pressed: { opacity: 0.85 },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingTop: 4,
+  },
+  headerFilter: { flex: 1, minHeight: 40 },
   accountBtn: {
-    position: 'absolute',
-    top: 8,
-    right: 12,
     width: 40,
     height: 40,
     borderRadius: 20,
     backgroundColor: theme.bg,
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 10,
     borderWidth: 1,
     borderColor: theme.border,
   },
