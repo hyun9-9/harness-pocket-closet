@@ -4,6 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from routers.analyze import router as analyze_router
 from routers.clothes import router as clothes_router
 from routers.detect import router as detect_router
+from routers.fittings import router as fittings_router
+from routers.profile import router as profile_router
 from routers.recommend import router as recommend_router
 from routers.tryon import router as tryon_router
 from routers.uploads import router as uploads_router
@@ -32,3 +34,5 @@ app.include_router(recommend_router)
 app.include_router(uploads_router)
 app.include_router(users_router)
 app.include_router(clothes_router)
+app.include_router(fittings_router)
+app.include_router(profile_router)
