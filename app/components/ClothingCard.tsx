@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -11,7 +11,44 @@ import {
 import Svg, { Path } from 'react-native-svg';
 
 import { theme } from '../constants/theme';
+import { getReadUrl } from '../services/sync/imageUpload';
 import type { Clothing } from '../types';
+
+const LOCAL_OR_HTTP_RE = /^(file|content|https?|data):/;
+
+function useResolvedImageUri(rawUri: string | undefined | null): {
+  uri: string | null;
+  failed: boolean;
+} {
+  const [uri, setUri] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setFailed(false);
+    if (!rawUri) {
+      setUri(null);
+      return;
+    }
+    if (LOCAL_OR_HTTP_RE.test(rawUri)) {
+      setUri(rawUri);
+      return;
+    }
+    setUri(null);
+    getReadUrl('clothes', rawUri)
+      .then((signed) => {
+        if (!cancelled) setUri(signed);
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [rawUri]);
+
+  return { uri, failed };
+}
 
 export interface ClothingCardProps {
   clothing: Clothing;
@@ -28,8 +65,11 @@ export function ClothingCard({
   disabled,
   style,
 }: ClothingCardProps) {
-  const [failed, setFailed] = useState(false);
-  const showPlaceholder = !clothing.imageUri || failed;
+  const [imgFailed, setImgFailed] = useState(false);
+  const { uri: resolvedUri, failed: resolveFailed } = useResolvedImageUri(
+    clothing.imageUri
+  );
+  const showPlaceholder = !resolvedUri || imgFailed || resolveFailed;
   const isAnalyzing = clothing.status === 'analyzing';
   const isAnalyzeFailed = clothing.status === 'failed';
 
@@ -52,9 +92,9 @@ export function ClothingCard({
         </View>
       ) : (
         <Image
-          source={{ uri: clothing.imageUri }}
+          source={{ uri: resolvedUri }}
           style={styles.image}
-          onError={() => setFailed(true)}
+          onError={() => setImgFailed(true)}
         />
       )}
       {isAnalyzing && (

@@ -2,6 +2,12 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
 );
 
+// uuid v14 는 ESM 으로 publish — jest transform 미지원이라 글로벌 mock.
+// 개별 테스트가 별도 jest.mock('uuid', ...) 로 override 가능.
+jest.mock('uuid', () => ({
+  v4: () => 'test-uuid',
+}));
+
 // expo-secure-store: in-memory mock (테스트에서 SecureStore 직접 검증할 일은
 // 없고, services/supabase.ts 가 import 시 native bridge 를 깨우는 걸 방지).
 jest.mock('expo-secure-store', () => {

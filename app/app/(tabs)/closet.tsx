@@ -23,7 +23,18 @@ import { analyzeClothes } from '../../services/api';
 import { pickImagesFromGallery, takePhoto } from '../../services/imagePicker';
 import { resizeAndSaveClothingImage } from '../../services/imageUtils';
 import { addClothes, getClothes, updateClothing } from '../../services/storage';
+import {
+  pushPendingClothes,
+  syncClothes,
+} from '../../services/sync/clothesSync';
 import type { Category, Clothing } from '../../types';
+
+function triggerPush(): void {
+  pushPendingClothes().catch((e) => {
+    // eslint-disable-next-line no-console
+    console.warn('pushPendingClothes failed', e);
+  });
+}
 
 const inFlightIds = new Set<string>();
 
@@ -82,12 +93,22 @@ export default function ClosetScreen() {
       let active = true;
       (async () => {
         await refresh();
-        if (!active) return;
+        if (!active || !user) return;
+        // 포커스 진입마다 1회 sync — push 누락 만회 + remote 변경 pull.
+        // 실패해도 UI 는 진행. 끝나면 한번 더 refresh 로 pull 결과 반영.
+        try {
+          await syncClothes();
+          if (!active) return;
+          await refresh();
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.warn('syncClothes failed', e);
+        }
       })();
       return () => {
         active = false;
       };
-    }, [refresh])
+    }, [refresh, user])
   );
 
   const filtered = clothes.filter((c) =>
@@ -121,6 +142,7 @@ export default function ClosetScreen() {
     } finally {
       for (const p of placeholders) inFlightIds.delete(p.id);
       await refresh();
+      triggerPush();
     }
   };
 
