@@ -133,6 +133,44 @@ export async function upsertClothesRemote(
   return postJson('/clothes/upsert', { items }, 'clothes-upsert');
 }
 
+export interface RemoteFitting {
+  id: string;
+  user_id?: string;
+  result_image_url?: string | null;
+  clothing_ids?: string[] | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  deleted_at?: string | null;
+}
+
+export async function listFittingsSince(since?: string): Promise<RemoteFitting[]> {
+  const q = since ? `?since=${encodeURIComponent(since)}` : '';
+  return getJson<RemoteFitting[]>(`/fittings${q}`, 'fittings-list');
+}
+
+export async function upsertFittingsRemote(
+  items: RemoteFitting[]
+): Promise<{ upserted: number }> {
+  return postJson('/fittings/upsert', { items }, 'fittings-upsert');
+}
+
+export interface RemoteProfile {
+  user_id?: string;
+  person_image_url?: string | null;
+  updated_at?: string | null;
+  deleted_at?: string | null;
+}
+
+export async function getRemoteProfile(): Promise<RemoteProfile | null> {
+  return getJson<RemoteProfile | null>('/profile', 'profile-get');
+}
+
+export async function upsertRemoteProfile(
+  body: RemoteProfile
+): Promise<RemoteProfile> {
+  return postJson('/profile/upsert', body, 'profile-upsert');
+}
+
 export async function bootstrapUser(): Promise<{ user_id: string; created: boolean }> {
   return postJson('/users/bootstrap', {}, 'bootstrap');
 }

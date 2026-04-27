@@ -154,6 +154,10 @@ export async function getFittings(): Promise<FittingResult[]> {
   return (await readAllFittings()).filter((f) => !f.deleted_at);
 }
 
+export async function getAllFittingsIncludingDeleted(): Promise<FittingResult[]> {
+  return readAllFittings();
+}
+
 export async function addFitting(item: FittingResult): Promise<void> {
   const current = await readAllFittings();
   const now = nowIso();
@@ -166,6 +170,52 @@ export async function addFitting(item: FittingResult): Promise<void> {
       remote_synced_at: null,
     },
   ]);
+}
+
+export async function deleteFitting(id: string): Promise<void> {
+  const current = await readAllFittings();
+  const now = nowIso();
+  const next = current.map((f) =>
+    f.id === id
+      ? { ...f, deleted_at: now, updated_at: now, remote_synced_at: null }
+      : f
+  );
+  await writeArray(FITTINGS_KEY, next);
+}
+
+export async function markFittingSynced(
+  id: string,
+  syncedAt: string = nowIso()
+): Promise<void> {
+  const current = await readAllFittings();
+  const next = current.map((f) =>
+    f.id === id ? { ...f, remote_synced_at: syncedAt } : f
+  );
+  await writeArray(FITTINGS_KEY, next);
+}
+
+export async function upsertFittingsFromRemote(
+  remoteRows: FittingResult[]
+): Promise<void> {
+  const current = await readAllFittings();
+  const byId = new Map(current.map((f) => [f.id, f]));
+  for (const remote of remoteRows) {
+    const local = byId.get(remote.id);
+    if (!local) {
+      byId.set(remote.id, { ...remote, remote_synced_at: remote.updated_at ?? null });
+      continue;
+    }
+    const localTs = local.updated_at ?? '';
+    const remoteTs = remote.updated_at ?? '';
+    if (remoteTs > localTs) {
+      byId.set(remote.id, {
+        ...local,
+        ...remote,
+        remote_synced_at: remoteTs || nowIso(),
+      });
+    }
+  }
+  await writeArray(FITTINGS_KEY, Array.from(byId.values()));
 }
 
 // ============================================================================
@@ -197,6 +247,32 @@ export async function setPersonImage(uri: string | null): Promise<void> {
     remote_synced_at: null,
   };
   await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+}
+
+export async function markProfileSynced(
+  syncedAt: string = nowIso()
+): Promise<void> {
+  const prev = await getUserProfile();
+  const next: UserProfile = {
+    ...prev,
+    remote_synced_at: syncedAt,
+  };
+  await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(next));
+}
+
+export async function applyRemoteProfile(remote: UserProfile): Promise<void> {
+  const local = await getUserProfile();
+  const localTs = local.updated_at ?? '';
+  const remoteTs = remote.updated_at ?? '';
+  if (!localTs || remoteTs > localTs) {
+    await AsyncStorage.setItem(
+      PROFILE_KEY,
+      JSON.stringify({
+        ...remote,
+        remote_synced_at: remoteTs || nowIso(),
+      })
+    );
+  }
 }
 
 // ============================================================================
