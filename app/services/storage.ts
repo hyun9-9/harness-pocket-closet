@@ -118,7 +118,19 @@ export async function markClothingSynced(
   await writeArray(CLOTHES_KEY, next);
 }
 
-/** sync pull 시 서버 row 를 로컬에 반영. id 매칭 시 LWW (updated_at 큰 쪽 승). */
+function isLocalUri(uri: string | undefined | null): boolean {
+  if (!uri) return false;
+  return uri.startsWith('file:') || uri.startsWith('content:');
+}
+
+/** sync pull 시 서버 row 를 로컬에 반영. id 매칭 시 LWW (updated_at 큰 쪽 승).
+ *
+ * 한 가지 예외: 로컬 imageUri 가 file:/content: 형태면 그것을 보존한다. 그래야
+ * tryOn / analyze 의 multipart fetch 가 캐시된 로컬 파일을 그대로 사용할 수
+ * 있고, 표시는 ClothingCard 가 어차피 remote path 도 signed URL 로 변환하니까
+ * 외부적으로 동일하다. 이미지가 로컬 캐시에 있을 때 굳이 remote path 로 바꾸면
+ * 모든 fetch 가 (signed URL 받기 + 다운로드) 한 번 더 거쳐야 하는 비용도 줄어듦.
+ */
 export async function upsertClothesFromRemote(remoteRows: Clothing[]): Promise<void> {
   const current = await readAllClothes();
   const byId = new Map(current.map((c) => [c.id, c]));
@@ -134,6 +146,7 @@ export async function upsertClothesFromRemote(remoteRows: Clothing[]): Promise<v
       byId.set(remote.id, {
         ...local,
         ...remote,
+        imageUri: isLocalUri(local.imageUri) ? local.imageUri : remote.imageUri,
         remote_synced_at: remoteTs || nowIso(),
       });
     }
@@ -211,6 +224,10 @@ export async function upsertFittingsFromRemote(
       byId.set(remote.id, {
         ...local,
         ...remote,
+        // clothes 와 같은 이유로 로컬 file URI 는 보존 — multipart fetch 안정성.
+        resultImageUri: isLocalUri(local.resultImageUri)
+          ? local.resultImageUri
+          : remote.resultImageUri,
         remote_synced_at: remoteTs || nowIso(),
       });
     }
