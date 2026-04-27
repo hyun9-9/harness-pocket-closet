@@ -1,10 +1,20 @@
 # 사용자 흐름
 
-## 첫 실행
+## 앱 시작 시 게이팅
 ```
-앱 실행 → 빈 옷장 → 중앙 CTA "옷을 등록해보세요"
+앱 실행
+  └─ AuthContext mount: getSession() + onAuthStateChange 구독
+       ├─ session 있음 → /(tabs)/closet
+       └─ session 없음 → /sign-in
+              └─ Google 로그인 → in-app browser → callback (PKCE) → setSession
+                    └─ /(tabs)/closet 으로 이동
 ```
-온보딩 없음. 바로 빈 옷장.
+
+## 첫 실행 (로그인 후)
+```
+빈 옷장 → 중앙 CTA "옷을 등록해보세요"
+```
+온보딩 없음. 옷장 진입 시 Supabase 에서 자동 sync (push pending + pull remote).
 
 ## 옷 등록
 ```
