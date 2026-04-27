@@ -12,6 +12,15 @@ class AnalyzeResponseItem(BaseModel):
     tags: list[str] = Field(default_factory=list)
 
 
+class DetectMultiItem(BaseModel):
+    category: Category
+    colors: list[str] = Field(default_factory=list)
+    material: str = ""
+    tags: list[str] = Field(default_factory=list)
+    confidence: float = 0.0
+    box_2d: list[int] = Field(default_factory=list)
+
+
 class TryOnResponse(BaseModel):
     image_base64: str
     mime: Literal["image/jpeg"] = "image/jpeg"
