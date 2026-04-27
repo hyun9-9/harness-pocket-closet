@@ -27,6 +27,8 @@ import {
   pushPendingClothes,
   syncClothes,
 } from '../../services/sync/clothesSync';
+import { syncFittings } from '../../services/sync/fittingsSync';
+import { syncProfile } from '../../services/sync/profileSync';
 import type { Category, Clothing } from '../../types';
 
 function triggerPush(): void {
@@ -94,14 +96,10 @@ export default function ClosetScreen() {
       (async () => {
         await refresh();
         if (!active || !user) return;
-        try {
-          await syncClothes();
-          if (!active) return;
-          await refresh();
-        } catch (e) {
-          // eslint-disable-next-line no-console
-          console.warn('syncClothes failed', e);
-        }
+        // 옷/피팅/전신사진 셋 다 best-effort sync. 하나가 실패해도 나머지는 계속.
+        await Promise.allSettled([syncClothes(), syncFittings(), syncProfile()]);
+        if (!active) return;
+        await refresh();
       })();
       return () => {
         active = false;
