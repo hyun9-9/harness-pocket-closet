@@ -71,13 +71,21 @@ scripts/                          # 개발 워크플로우 자동화 (run-phases
 ```bash
 cp app/.env.example app/.env
 cp server/.env.example server/.env
-# server/.env 의 GEMINI_API_KEY 를 채운다
 ```
 
 | 파일 | 변수 | 설명 |
 |------|------|------|
 | `app/.env` | `EXPO_PUBLIC_API_URL` | 서버 주소. 기본값 `http://localhost:8000`. 실기기에서 접속할 때는 머신 LAN IP로 교체 |
+| `app/.env` | `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Supabase 프로젝트 URL + Publishable key |
+| `app/.env` | `EXPO_PUBLIC_DEV_MOCK_AUTH` | 개발용 mock 로그인 토글 (`true`/`false`) |
 | `server/.env` | `GEMINI_API_KEY` | Google AI Studio에서 발급받은 키. **절대 앱 코드에 커밋하지 말 것** |
+| `server/.env` | `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` | Supabase 프로젝트 URL + Secret key (RLS 우회) |
+| `server/.env` | `GOOGLE_OAUTH_CLIENT_ID` (옵션) | Google ID token audience 비교용 |
+
+## Supabase 셋업
+
+옷 / 피팅 / 전신사진을 클라우드 sync 하려면 Supabase 프로젝트 + Google OAuth 클라이언트가
+필요하다. 콘솔 절차, SQL 마이그레이션, Storage 버킷, env 매핑은 [`docs/supabase-setup.md`](docs/supabase-setup.md) 참고.
 
 ## 로컬 실행 순서
 

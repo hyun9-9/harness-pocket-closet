@@ -6,3 +6,5 @@ python-multipart
 pillow
 pytest
 httpx
+supabase>=2.0
+pyjwt[crypto]>=2.8
