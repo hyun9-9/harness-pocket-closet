@@ -1,6 +1,7 @@
 import type { Clothing } from '../types';
 import { clearAllLocal } from './storage';
 import { supabase } from './supabase';
+import { getReadUrl } from './sync/imageUpload';
 
 const ANALYZE_TIMEOUT_MS = 60_000;
 const DETECT_MULTI_TIMEOUT_MS = 60_000;
@@ -37,6 +38,18 @@ function fileFromUri(uri: string, name: string): any {
     ? 'image/webp'
     : 'image/jpeg';
   return { uri, name, type };
+}
+
+const FETCHABLE_RE = /^(file|content|https?|data):/;
+
+/** multipart fetch 가 받을 수 있는 URI 로 변환. remote path (예: user-A/abc.jpg)
+ * 면 해당 bucket 의 signed read URL 을 받아 https:// URL 로. */
+async function resolveFetchableUri(
+  uri: string,
+  bucket: Bucket
+): Promise<string> {
+  if (FETCHABLE_RE.test(uri)) return uri;
+  return getReadUrl(bucket, uri);
 }
 
 async function fetchWithTimeout(
@@ -242,9 +255,16 @@ export async function tryOn(
   meta = '',
   stylingPrompt = ''
 ): Promise<TryOnResponse> {
+  // 옷/사람 이미지가 remote path 면 signed URL 로 변환해 multipart 에 사용.
+  // 로컬 캐시(file:) 가 있으면 그대로.
+  const [resolvedPerson, resolvedClothes] = await Promise.all([
+    resolveFetchableUri(personUri, 'person'),
+    Promise.all(clothingUris.map((u) => resolveFetchableUri(u, 'clothes'))),
+  ]);
+
   const form = new FormData();
-  form.append('person', fileFromUri(personUri, 'person.jpg'));
-  clothingUris.forEach((uri, idx) => {
+  form.append('person', fileFromUri(resolvedPerson, 'person.jpg'));
+  resolvedClothes.forEach((uri, idx) => {
     form.append('clothes', fileFromUri(uri, `clothing_${idx}.jpg`));
   });
   form.append('meta', meta);
