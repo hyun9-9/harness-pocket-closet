@@ -6,7 +6,13 @@ export type Occasion = (typeof OCCASIONS)[number];
 
 export type ClothingStatus = 'analyzing' | 'ready' | 'failed';
 
-export interface Clothing {
+export interface SyncMeta {
+  updated_at?: string;
+  deleted_at?: string | null;
+  remote_synced_at?: string | null;
+}
+
+export interface Clothing extends SyncMeta {
   id: string;
   imageUri: string;
   category: Category;
@@ -17,13 +23,13 @@ export interface Clothing {
   status?: ClothingStatus;
 }
 
-export interface FittingResult {
+export interface FittingResult extends SyncMeta {
   id: string;
   resultImageUri: string;
   clothingIds: string[];
   createdAt: number;
 }
 
-export interface UserProfile {
+export interface UserProfile extends SyncMeta {
   personImageUri: string | null;
 }

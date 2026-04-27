@@ -3,6 +3,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CLOTHES_KEY, FITTINGS_KEY, PROFILE_KEY } from '../constants/storageKeys';
 import type { Clothing, FittingResult, UserProfile } from '../types';
 
+// 모든 옷/피팅 row 는 내부적으로 메타 필드(updated_at / deleted_at /
+// remote_synced_at) 를 갖는다. phase 4 sync 흐름에서 사용. 외부 함수 시그니처는
+// 호환을 유지하지만 read 시 default 가 채워지고 write 시 갱신된다.
+
+function nowIso(): string {
+  return new Date().toISOString();
+}
+
 async function readArray<T>(key: string): Promise<T[]> {
   const raw = await AsyncStorage.getItem(key);
   if (!raw) return [];
@@ -18,56 +26,182 @@ async function writeArray<T>(key: string, value: T[]): Promise<void> {
   await AsyncStorage.setItem(key, JSON.stringify(value));
 }
 
+function withDefaultMeta<T extends { updated_at?: string; deleted_at?: string | null; remote_synced_at?: string | null }>(
+  item: T
+): T {
+  return {
+    ...item,
+    updated_at: item.updated_at ?? nowIso(),
+    deleted_at: item.deleted_at ?? null,
+    remote_synced_at: item.remote_synced_at ?? null,
+  };
+}
+
+// ============================================================================
+// clothes
+// ============================================================================
+
+async function readAllClothes(): Promise<Clothing[]> {
+  const items = await readArray<Clothing>(CLOTHES_KEY);
+  return items.map(withDefaultMeta);
+}
+
 export async function getClothes(): Promise<Clothing[]> {
-  return readArray<Clothing>(CLOTHES_KEY);
+  // soft-delete 된 row 는 외부에서 보이지 않는다.
+  return (await readAllClothes()).filter((c) => !c.deleted_at);
+}
+
+export async function getAllClothesIncludingDeleted(): Promise<Clothing[]> {
+  return readAllClothes();
 }
 
 export async function addClothes(items: Clothing[]): Promise<void> {
-  const current = await getClothes();
-  await writeArray(CLOTHES_KEY, [...current, ...items]);
+  const current = await readAllClothes();
+  const now = nowIso();
+  const next = [
+    ...current,
+    ...items.map((it) => ({
+      ...it,
+      updated_at: it.updated_at ?? now,
+      deleted_at: null,
+      remote_synced_at: null,
+    })),
+  ];
+  await writeArray(CLOTHES_KEY, next);
 }
 
 export async function updateClothing(
   id: string,
   patch: Partial<Clothing>
 ): Promise<void> {
-  const current = await getClothes();
-  const next = current.map((c) => (c.id === id ? { ...c, ...patch, id: c.id } : c));
+  const current = await readAllClothes();
+  const now = nowIso();
+  const next = current.map((c) =>
+    c.id === id
+      ? {
+          ...c,
+          ...patch,
+          id: c.id,
+          updated_at: now,
+          remote_synced_at: null,
+        }
+      : c
+  );
   await writeArray(CLOTHES_KEY, next);
 }
 
 export async function deleteClothing(id: string): Promise<void> {
-  const current = await getClothes();
-  await writeArray(
-    CLOTHES_KEY,
-    current.filter((c) => c.id !== id)
+  // soft delete — row 는 유지하고 deleted_at 만 set. sync push 가 서버에도 전달.
+  const current = await readAllClothes();
+  const now = nowIso();
+  const next = current.map((c) =>
+    c.id === id
+      ? {
+          ...c,
+          deleted_at: now,
+          updated_at: now,
+          remote_synced_at: null,
+        }
+      : c
   );
+  await writeArray(CLOTHES_KEY, next);
+}
+
+export async function markClothingSynced(
+  id: string,
+  syncedAt: string = nowIso()
+): Promise<void> {
+  const current = await readAllClothes();
+  const next = current.map((c) =>
+    c.id === id ? { ...c, remote_synced_at: syncedAt } : c
+  );
+  await writeArray(CLOTHES_KEY, next);
+}
+
+/** sync pull 시 서버 row 를 로컬에 반영. id 매칭 시 LWW (updated_at 큰 쪽 승). */
+export async function upsertClothesFromRemote(remoteRows: Clothing[]): Promise<void> {
+  const current = await readAllClothes();
+  const byId = new Map(current.map((c) => [c.id, c]));
+  for (const remote of remoteRows) {
+    const local = byId.get(remote.id);
+    if (!local) {
+      byId.set(remote.id, { ...remote, remote_synced_at: remote.updated_at ?? null });
+      continue;
+    }
+    const localTs = local.updated_at ?? '';
+    const remoteTs = remote.updated_at ?? '';
+    if (remoteTs > localTs) {
+      byId.set(remote.id, {
+        ...local,
+        ...remote,
+        remote_synced_at: remoteTs || nowIso(),
+      });
+    }
+  }
+  await writeArray(CLOTHES_KEY, Array.from(byId.values()));
+}
+
+// ============================================================================
+// fittings
+// ============================================================================
+
+async function readAllFittings(): Promise<FittingResult[]> {
+  const items = await readArray<FittingResult>(FITTINGS_KEY);
+  return items.map(withDefaultMeta);
 }
 
 export async function getFittings(): Promise<FittingResult[]> {
-  return readArray<FittingResult>(FITTINGS_KEY);
+  return (await readAllFittings()).filter((f) => !f.deleted_at);
 }
 
 export async function addFitting(item: FittingResult): Promise<void> {
-  const current = await getFittings();
-  await writeArray(FITTINGS_KEY, [...current, item]);
+  const current = await readAllFittings();
+  const now = nowIso();
+  await writeArray(FITTINGS_KEY, [
+    ...current,
+    {
+      ...item,
+      updated_at: item.updated_at ?? now,
+      deleted_at: null,
+      remote_synced_at: null,
+    },
+  ]);
 }
+
+// ============================================================================
+// user profile
+// ============================================================================
 
 export async function getUserProfile(): Promise<UserProfile> {
   const raw = await AsyncStorage.getItem(PROFILE_KEY);
   if (!raw) return { personImageUri: null };
   try {
     const parsed = JSON.parse(raw) as Partial<UserProfile>;
-    return { personImageUri: parsed.personImageUri ?? null };
+    return {
+      personImageUri: parsed.personImageUri ?? null,
+      updated_at: parsed.updated_at,
+      deleted_at: parsed.deleted_at ?? null,
+      remote_synced_at: parsed.remote_synced_at ?? null,
+    };
   } catch {
     return { personImageUri: null };
   }
 }
 
 export async function setPersonImage(uri: string | null): Promise<void> {
-  const profile: UserProfile = { personImageUri: uri };
+  const prev = await getUserProfile();
+  const profile: UserProfile = {
+    personImageUri: uri,
+    updated_at: nowIso(),
+    deleted_at: prev.deleted_at ?? null,
+    remote_synced_at: null,
+  };
   await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
 }
+
+// ============================================================================
+// 전체 클리어 — signOut 시 호출.
+// ============================================================================
 
 export async function clearAllLocal(): Promise<void> {
   await AsyncStorage.multiRemove([CLOTHES_KEY, FITTINGS_KEY, PROFILE_KEY]);

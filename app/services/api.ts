@@ -99,6 +99,40 @@ async function postJson<T>(path: string, body: any, label: string): Promise<T> {
   return ensureOk(res, label);
 }
 
+async function getJson<T>(path: string, label: string): Promise<T> {
+  const auth = await authHeaders();
+  const res = await fetchWithTimeout(
+    `${apiBase()}${path}`,
+    { method: 'GET', headers: auth },
+    JSON_TIMEOUT_MS
+  );
+  return ensureOk(res, label);
+}
+
+export interface RemoteClothing {
+  id: string;
+  user_id?: string;
+  image_url?: string | null;
+  category?: string | null;
+  colors?: string[] | null;
+  material?: string | null;
+  tags?: string[] | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  deleted_at?: string | null;
+}
+
+export async function listClothesSince(since?: string): Promise<RemoteClothing[]> {
+  const q = since ? `?since=${encodeURIComponent(since)}` : '';
+  return getJson<RemoteClothing[]>(`/clothes${q}`, 'clothes-list');
+}
+
+export async function upsertClothesRemote(
+  items: RemoteClothing[]
+): Promise<{ upserted: number }> {
+  return postJson('/clothes/upsert', { items }, 'clothes-upsert');
+}
+
 export async function bootstrapUser(): Promise<{ user_id: string; created: boolean }> {
   return postJson('/users/bootstrap', {}, 'bootstrap');
 }
