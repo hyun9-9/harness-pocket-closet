@@ -1,5 +1,5 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Image,
   Pressable,
@@ -34,6 +34,13 @@ export default function FittingScreen() {
   const [fittings, setFittings] = useState<FittingResult[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>(() => parseIds(params.ids));
   const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    const incoming = parseIds(params.ids);
+    if (incoming.length === 0) return;
+    setSelectedIds(incoming);
+    router.setParams({ ids: undefined });
+  }, [params.ids, router]);
 
   useFocusEffect(
     useCallback(() => {
