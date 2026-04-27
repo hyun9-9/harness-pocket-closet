@@ -1,9 +1,25 @@
 import type { Clothing } from '../types';
+import { clearAllLocal } from './storage';
+import { supabase } from './supabase';
 
 const ANALYZE_TIMEOUT_MS = 60_000;
 const DETECT_MULTI_TIMEOUT_MS = 60_000;
 const RECOMMEND_TIMEOUT_MS = 30_000;
 const TRYON_TIMEOUT_MS = 60_000;
+const JSON_TIMEOUT_MS = 30_000;
+
+export type Bucket = 'clothes' | 'fittings' | 'person';
+
+async function authHeaders(): Promise<Record<string, string>> {
+  try {
+    const { data } = await supabase.auth.getSession();
+    const token = data?.session?.access_token;
+    if (!token) return {};
+    return { Authorization: `Bearer ${token}` };
+  } catch {
+    return {};
+  }
+}
 
 function apiBase(): string {
   const base = process.env.EXPO_PUBLIC_API_URL;
@@ -48,6 +64,16 @@ async function fetchWithTimeout(
 }
 
 async function ensureOk(res: Response, label: string): Promise<any> {
+  if (res.status === 401) {
+    // 토큰 만료 / 무효 — 강제 로그아웃 + 로컬 캐시 클리어.
+    try {
+      await supabase.auth.signOut();
+    } catch {}
+    try {
+      await clearAllLocal();
+    } catch {}
+    throw new Error('unauthenticated');
+  }
   if (!res.ok) {
     let message = `${label} 실패 (status ${res.status})`;
     try {
@@ -57,6 +83,38 @@ async function ensureOk(res: Response, label: string): Promise<any> {
     throw new Error(message);
   }
   return res.json();
+}
+
+async function postJson<T>(path: string, body: any, label: string): Promise<T> {
+  const auth = await authHeaders();
+  const res = await fetchWithTimeout(
+    `${apiBase()}${path}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...auth },
+      body: JSON.stringify(body ?? {}),
+    },
+    JSON_TIMEOUT_MS
+  );
+  return ensureOk(res, label);
+}
+
+export async function bootstrapUser(): Promise<{ user_id: string; created: boolean }> {
+  return postJson('/users/bootstrap', {}, 'bootstrap');
+}
+
+export async function requestSignedUploadUrl(
+  bucket: Bucket,
+  filename: string
+): Promise<{ upload_url: string; read_path: string; expires_in: number }> {
+  return postJson('/uploads/signed-url', { bucket, filename }, 'signed-upload-url');
+}
+
+export async function requestSignedReadUrl(
+  bucket: Bucket,
+  filename: string
+): Promise<{ url: string; expires_in: number }> {
+  return postJson('/uploads/signed-read-url', { bucket, filename }, 'signed-read-url');
 }
 
 export interface AnalyzeItem {

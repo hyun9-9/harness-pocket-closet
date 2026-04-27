@@ -68,3 +68,7 @@ export async function setPersonImage(uri: string | null): Promise<void> {
   const profile: UserProfile = { personImageUri: uri };
   await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
 }
+
+export async function clearAllLocal(): Promise<void> {
+  await AsyncStorage.multiRemove([CLOTHES_KEY, FITTINGS_KEY, PROFILE_KEY]);
+}

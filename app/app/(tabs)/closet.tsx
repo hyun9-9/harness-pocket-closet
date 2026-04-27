@@ -1,6 +1,7 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
+  Alert,
   FlatList,
   Modal,
   Pressable,
@@ -17,6 +18,7 @@ import { ClothingCard } from '../../components/ClothingCard';
 import { useToast } from '../../components/ToastContext';
 import { CATEGORIES } from '../../constants/categories';
 import { theme } from '../../constants/theme';
+import { useAuth } from '../../contexts/AuthContext';
 import { analyzeClothes } from '../../services/api';
 import { pickImagesFromGallery, takePhoto } from '../../services/imagePicker';
 import { resizeAndSaveClothingImage } from '../../services/imageUtils';
@@ -39,10 +41,30 @@ const GRID_PADDING = 16;
 export default function ClosetScreen() {
   const router = useRouter();
   const toast = useToast();
+  const { user, signOut } = useAuth();
 
   const [clothes, setClothes] = useState<Clothing[]>([]);
   const [filter, setFilter] = useState<CategoryFilterValue>('all');
   const [sheetOpen, setSheetOpen] = useState(false);
+
+  const handleAccountPress = () => {
+    const email = user?.email ?? '로그인됨';
+    Alert.alert(
+      email,
+      undefined,
+      [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '로그아웃',
+          style: 'destructive',
+          onPress: () => {
+            signOut().catch((e) => toast.showError(e?.message ?? '로그아웃 실패'));
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
 
   const refresh = useCallback(async () => {
     const items = await getClothes();
@@ -155,6 +177,15 @@ export default function ClosetScreen() {
 
   return (
     <View style={styles.container}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="계정"
+        onPress={handleAccountPress}
+        style={({ pressed }) => [styles.accountBtn, pressed && styles.pressed]}
+      >
+        <Text style={styles.accountIcon}>👤</Text>
+      </Pressable>
+
       {!isEmpty && (
         <CategoryFilter value={filter} onChange={setFilter} includeAll />
       )}
@@ -295,6 +326,21 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   pressed: { opacity: 0.85 },
+  accountBtn: {
+    position: 'absolute',
+    top: 8,
+    right: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.bg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    borderWidth: 1,
+    borderColor: theme.border,
+  },
+  accountIcon: { fontSize: 18 },
   sheetBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.35)',
