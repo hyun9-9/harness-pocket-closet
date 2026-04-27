@@ -82,3 +82,10 @@ memo.txt
 # === Misc ===
 coverage/
 .nyc_output/
+.gstack/
+
+# === Local experiments / launchers (개인 환경) ===
+experiments/
+experiments_output*.txt
+scripts/experiments/
+start-claude.cmd
